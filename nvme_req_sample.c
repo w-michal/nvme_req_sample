@@ -52,6 +52,11 @@ struct request *nvme_alloc_request(struct request_queue *q,
   return req;
 }
 
+static inline struct nvme_request *nvme_req(struct request *req)
+{
+  return blk_mq_rq_to_pdu(req);
+}
+
 int nvme_submit_user_cmd(struct gendisk *disk, struct request_queue *q, struct nvme_command *cmd,
                          void *buffer, unsigned bufflen, u32 *result, unsigned timeout)
 {
@@ -96,8 +101,9 @@ int nvme_submit_user_cmd(struct gendisk *disk, struct request_queue *q, struct n
   }
 submit:
   printk("Before call");
-  blk_execute_rq(req->q, disk, req, 0);
-  printk(KERN_INFO "req->errors %d\n", req->errors);
+  int req_res = blk_execute_rq(req->q, disk, req, 0);
+  printk(KERN_INFO "req_res %d\n", req_res);
+  printk(KERN_INFO "status %d\n",nvme_req(req)->status);
   ret = req->errors;
   if (result)
     *result = le32_to_cpu(cqe.result);
@@ -110,11 +116,6 @@ out_unmap:
 out:
   blk_mq_free_request(req);
   return ret;
-}
-
-static inline struct nvme_request *nvme_req(struct request *req)
-{
-  return blk_mq_rq_to_pdu(req);
 }
 
 static int __init lkm_example_init(void)
