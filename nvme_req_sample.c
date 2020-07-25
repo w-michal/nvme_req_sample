@@ -58,7 +58,7 @@ static inline struct nvme_request *nvme_req(struct request *req)
   return blk_mq_rq_to_pdu(req);
 }
 
-int nvme_submit_user_cmd(struct gendisk *disk, struct request_queue *q, struct nvme_command *cmd,
+int nvme_submit_cmd(struct gendisk *disk, struct request_queue *q, struct nvme_command *cmd,
                          void *buffer, unsigned bufflen, u32 *result, unsigned timeout)
 {
   struct nvme_completion cqe;
@@ -148,21 +148,25 @@ static int __init lkm_example_init(void)
     printk("Failed to malloc?.\n");
     goto err;
   }
-
+  char * cbuff = ret_buf;
+  cbuff[0] = 'a';
+  cbuff[1] = 'b';
+  cbuff[2] = 'c';
   ncmd = kzalloc (sizeof (struct nvme_command), GFP_KERNEL);
 
   memset(ncmd, 0, sizeof(&ncmd));
-  ncmd->common.opcode = nvme_admin_identify;
-  ncmd->identify.cns = cpu_to_le32(NVME_ID_CNS_CTRL);
+  ncmd->common.opcode = nvme_cmd_write;
+  ncmd->rw.nsid = cpu_to_le32(1);
+  ncmd->rw.length = cpu_to_le16(1);
 
-  struct nvme_id_ctrl *result = (struct nvme_id_ctrl *)ret_buf;
+  //struct nvme_id_ctrl *result = (struct nvme_id_ctrl *)ret_buf;
   u32 code_result = 0;
-  int submit_result = nvme_submit_user_cmd(bd_disk, ns->ctrl->admin_q, ncmd, ret_buf, buff_size, &code_result, 0);
+  int submit_result = nvme_submit_cmd(bd_disk, bd_disk->queue, ncmd, ret_buf, buff_size, &code_result, 0);
 
   printk("submit_result. %d\n", submit_result);
   printk("result. %u\n", code_result);  // probably not usefull
   // should print 0x1AE0 (6880)
-  printk("vid. %d\n", result->vid);
+  //printk("vid. %d\n", result->vid);
 
 err:
   if (ncmd) {
